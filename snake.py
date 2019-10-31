@@ -1,13 +1,17 @@
 import pygame
 import random
+from tkinter import *
 
-class GameBoard:
+class GameBoard():
     def __init__(self, screen_width, screen_height):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.rows = screen_height // 20
         self.screen = pygame.display.set_mode([screen_width,screen_height])
         self.screen.fill((0,0,0))
+
+        self.snake = None
+
         pygame.display.set_caption("Snake Game")
 
         self.drawGrid(self.screen)
@@ -15,9 +19,9 @@ class GameBoard:
 
 
     def redraw(self, screen):
-        screen.fill((0,0,0))
+        self.screen.fill((0,0,0))
         self.drawGrid(screen)
-        snake.draw(screen)
+        self.snake.draw(screen)
         snack.draw(screen)
         pygame.display.update()
 
@@ -36,18 +40,36 @@ class GameBoard:
 
         pygame.display.update()
 
-class Snake():
-    body = []
-    turns = {}
+    def displayMessage(self, message, color):
+        text = pygame.font.Font('freesansbold.ttf', 60)
+        surface = text.render(message, True, color)
+        rect = surface.get_rect()
+        rect.center = (self.screen_width/2, self.screen_height/2)
+        self.screen.blit(surface, rect)
+        pygame.display.update()
 
+    def resetGame():
+        pass
+
+class Snake():
     def __init__(self, x_position, y_position):
         self.x_position = x_position
         self.y_position = y_position
+        self.body = []
+        self.turns = {}
         self.head = Box((x_position, y_position))
         self.body.append(self.head)
 
         self.head.draw(screen)
         # pygame.draw.rect(screen, (0,255,0),[x_position * rows, y_position * rows, 20, 20])
+        pygame.display.update()
+
+    def resetSnake(self, position):
+        self.body = []
+        self.turns = {}
+        self.head = Box((position[0], position[1]))
+        self.body.append(self.head)
+        self.head.draw(screen)
         pygame.display.update()
 
     def moveSnake(self):
@@ -103,7 +125,7 @@ class Snake():
         for box in self.body:
             box.draw(screen)
 
-class Box:
+class Box():
     rows = 25
     width = 500
 
@@ -135,6 +157,29 @@ class Box:
         # may want to change some values to be inside the grid
         pygame.draw.rect(screen, self.color, ((x * distance) + 1, (y * distance) + 1, distance - 1, distance - 1))
 
+class PlayAgainWindow():
+    def __init__(self):
+        self.window = Tk()
+        self.var = IntVar(self.window)
+        self.play_again = False
+
+        self.window.title("Snake")
+        Label(self.window, text = f"Score : {score}").pack(anchor = CENTER)
+        Label(self.window, text = "Play Again?").pack(anchor = W)
+        Radiobutton(self.window, text="Yes", variable = self.var, value=1).pack(anchor=W)
+        Radiobutton(self.window, text="No", variable = self.var, value=2).pack(anchor=W)
+        Button(self.window, text="Submit", width = 20, command = self.click).pack(anchor=W)
+        self.window.mainloop()
+
+    def click(self):
+        var = self.var
+        selection = var.get()
+        self.window.destroy()
+        if selection == 1:
+            self.play_again = True
+        else:
+            self.play_again =  False
+
 
 def randomSnackLocation(rows, snake):
     body_list = snake.body
@@ -150,43 +195,50 @@ def randomSnackLocation(rows, snake):
 
     return (x,y)
 
+def startGame():
+    global screen, rows, snack, score
+    pygame.init()
 
-pygame.init()
+    screen_width = 500
+    screen_height = 500
+    board = GameBoard(screen_width,screen_height)
+    screen = board.screen
+    rows = board.rows
+    score = 1
 
+    snake = Snake(12, 12)
+    board.snake = snake
 
+    snack = Box(randomSnackLocation(rows,snake), color=(255,0,0))
 
-screen_width = 500
-screen_height = 500
-board = GameBoard(screen_width,screen_height)
-screen = board.screen
-rows = board.rows
+    running = True
 
-# flagged need to figure out center the start
-snake = Snake(12, 12)
-snack = Box(randomSnackLocation(rows,snake), color=(255,0,0))
+    while running:
+        pygame.time.delay(100)
 
-running = True
+        snake.moveSnake()
 
-while running:
-    pygame.time.delay(100)
+        if snake.head.position == snack.position:
+            snake.addBox()
+            snack = Box(randomSnackLocation(rows,snake), color=(255,0,0))
 
-    snake.moveSnake()
+        for box in snake.body[1:]:
+            if snake.head.position == box.position:
+                score = len(snake.body)
+                running = False
 
-    if snake.head.position == snack.position:
-        snake.addBox()
-        snack = Box(randomSnackLocation(rows,snake), color=(255,0,0))
+        board.redraw(screen)
 
-    for box in snake.body[1:]:
-        print("YUH")
-        print(snake.head.position)
-        print(box.position)
-        if snake.head.position == box.position:
-            print("Score : ", len(snake.body))
-            print("OVER")
-            running = False
+        if running == False:
+            close_window = PlayAgainWindow()
+            if close_window.play_again:
+                snake.resetSnake((12,12))
 
-    board.redraw(screen)
+    return close_window.play_again
 
-# add play again function
-# add better collision detection, only works for 3+ right now
-# doesn't work for 2 cube snake moving back on itself
+def main():
+    play = True
+    while play:
+        play = startGame()
+
+main()
